@@ -1,53 +1,71 @@
 import numpy as np
 
-# z = xw+b
-# x = number of inputs
-# w = number of weight, 1 per input and a set per neuron
-# b = 1 per neuron
-
-# z = b = len(neurons)
-
-np.random.seed(42)
-
 class Architecture():
     # z = Xw + b
     def __init__(self, num_inputs, num_neurons):
-        # Generate random values for the weights
-        weights = np.random.rand(num_inputs, num_neurons)
+        # Generate random small values for the weights
+        weights = 0.1 * np.random.randn(num_inputs, num_neurons)
         # weights to be used in forward
         self.weights = weights
         # Generate initialization of bias = 1
-        bias = np.full((1,num_neurons),1)
+        bias = np.full((1, num_neurons), 0.01)
         # bias to be used in forward
         self.bias = bias
     def forward(self, inputs):
+        # Remember the inputs
+        self.inputs = inputs
         # Calculate output of layer
-        z = np.dot(inputs,self.weights) + self.bias
-        self.outputs = z
+        self.outputs = np.dot(inputs,self.weights) + self.bias
+    def backward(self, dvalues):
+        # Gradient
+        self.dweights = np.dot(self.inputs.T, dvalues)
+        self.dinputs = np.dot(dvalues, self.weights.T)
+        self.dbias = np.sum(dvalues, axis=0, keepdims=True)
 
-class ActivationFunction():
-    def ReLU(self, outputs):
+class ReLU():
+    def forward(self, inputs):
+        # Rember inputs
+        self.inputs = inputs
         # z = z when z > 0
-        self.outputs = np.maximum(outputs, 0)
-        pass
+        self.outputs = np.maximum(inputs, 0)
+    def backward(self, dvalues):
+        # Copy dL/dz
+        self.dinputs = dvalues.copy()
+        # 0 when ReLU(z) < 0
+        self.dinputs[self.inputs < 0] = 0
 
+class SoftMax():
+    def forward(self, outputs):
+        # exp(z)/sum(exp(z))
+        self.inputs = outputs
+        exp_values = np.exp(outputs - np.max(outputs, axis=1, keepdims=True))  # Stability fix
+        probabilities = exp_values / np.sum(exp_values, axis=1, keepdims=True)
+        self.outputs = probabilities
+    def backward(self, target):
+        # dL/dz = y_pred - target
+        # To one hot encode
+        if len(target.shape) == 1:
+            target = np.eye(self.outputs.shape[1])[target]
+        self.dinputs = (self.outputs - target)  / target.shape[0]
 
+class CrossEntropy():
+    def forward(self, predictions, target):
+        self.predictions = predictions
+        self.target = target
+        self.samples = target.shape[0]
+        # one hot encoder
+        if len(target.shape) == 1:
+            target = np.eye(predictions.shape[1])[target]
+        self.target = target
+        # Always loss > 0
+        loss = -np.sum(target * np.log(predictions + 1e-9)) / self.samples
+        self.loss = loss
 
-X = np.array([1, 2, 3, 4])
-# 4 inputs, 5 neurons, 1 output
-
-
-
-layer1 = Architecture(4,5)
-activation1 = ActivationFunction()
-
-layer1.forward(X)
-activation1.ReLU(layer1.outputs)
-
-layer2 = Architecture(5,1)
-activation2 = ActivationFunction()
-
-layer2.forward(activation1.outputs)
-activation2.ReLU(layer2.outputs)
-
-print(activation2.outputs)
+class Optimizer():
+    def __init__(self, learning_rate=1):
+        self.learning_rate = learning_rate
+    def update(self, layer):
+        layer.weights -= self.learning_rate * layer.dweights
+        layer.bias -= self.learning_rate * layer.dbias
+        self.dweights = layer.weights
+        self.dbias = layer.bias
