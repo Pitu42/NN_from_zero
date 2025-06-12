@@ -31,7 +31,7 @@ O(X)=s(W.X+\vec{b})
 ```
 - $X\in\mathbb{R}^{nxd}$: batch of $n$ input vectors of dimension $d$
 - $W\in\mathbb{R}^{dxm}$: weights matrix mapping to $m$ neurons
-- $\vec{b}\in\mathbb{R}^{1xm}$: bias vector shared across inputs
+- $b\in\mathbb{R}^{1xm}$: bias vector shared across inputs
 - $s$: activation function
 
 ### ReLU
